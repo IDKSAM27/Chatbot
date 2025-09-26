@@ -45,34 +45,63 @@
     function chatApp() {
         return {
             messages: [
-                { id: 1, sender: 'bot', text: 'Hi! How can I help you today?' }
+                { id: 1, sender: 'bot', text: 'Hello! I\'m your campus assistant. Ask me about fees, scholarships, timetables, or any college information. मैं हिंदी में भी जवाब दे सकता हूं!' }
             ],
             newMessage: '',
             typing: false,
             idCounter: 2,
+            
             async sendMessage() {
                 if (!this.newMessage.trim()) return;
-
+    
                 // Add user message
-                this.messages.push({ id: this.idCounter++, sender: 'user', text: this.newMessage });
+                this.messages.push({ 
+                    id: this.idCounter++, 
+                    sender: 'user', 
+                    text: this.newMessage 
+                });
+                
                 const userInput = this.newMessage;
                 this.newMessage = '';
                 this.typing = true;
-
                 this.scrollToBottom();
-
-                // Simulate delay / API call
-                setTimeout(() => {
-                    const response = this.generateFakeResponse(userInput);
-                    this.messages.push({ id: this.idCounter++, sender: 'bot', text: response });
-                    this.typing = false;
-                    this.scrollToBottom();
-                }, 1000);
+    
+                try {
+                    const response = await fetch('/api/v1/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ message: userInput })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.response) {
+                        this.messages.push({ 
+                            id: this.idCounter++, 
+                            sender: 'bot', 
+                            text: data.response 
+                        });
+                    } else {
+                        this.messages.push({ 
+                            id: this.idCounter++, 
+                            sender: 'bot', 
+                            text: 'Sorry, I couldn\'t process that. Please try rephrasing your question.' 
+                        });
+                    }
+                } catch (error) {
+                    this.messages.push({ 
+                        id: this.idCounter++, 
+                        sender: 'bot', 
+                        text: 'Connection error. Please check your internet and try again.' 
+                    });
+                }
+                
+                this.typing = false;
+                this.scrollToBottom();
             },
-            generateFakeResponse(input) {
-                // Replace this with actual API call
-                return `You said: "${input}". This is a placeholder response.`;
-            },
+            
             scrollToBottom() {
                 this.$nextTick(() => {
                     this.$refs.chatBox.scrollTop = this.$refs.chatBox.scrollHeight;

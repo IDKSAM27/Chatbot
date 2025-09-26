@@ -26,6 +26,9 @@ HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8000))
 DEVELOPMENT = os.getenv("DEVELOPMENT", "True").lower() == "true"
 
+if DEVELOPMENT:
+    app.logger.setLevel(logging.DEBUG)
+
 sqlite_handler = _SQLiteLoggingHandler()
 sqlite_handler.connect("db.sqlite3")
 
