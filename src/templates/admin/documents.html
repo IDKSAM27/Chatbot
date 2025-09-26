@@ -91,95 +91,136 @@
     </div>
 
     <!-- Upload Section -->
+    <!-- BULK UPLOAD SECTION -->
     <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">Upload New Document</h2>
-        
-        <form action="/admin/upload_document" method="POST" enctype="multipart/form-data" class="space-y-4">
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">📁 Upload Documents (Bulk Upload Supported)</h2>
+
+        <form action="/admin/upload_documents" method="POST" enctype="multipart/form-data" 
+              x-data="bulkUpload()" @submit.prevent="uploadFiles()" class="space-y-4">
             <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Select PDF Document</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Select PDF Documents (Multiple files supported)
+                </label>
                 <div class="flex items-center space-x-4">
-                    <input type="file" name="file" accept=".pdf,.docx,.txt" 
+                    <input type="file" name="files" accept=".pdf,.docx,.txt" multiple
+                           x-ref="fileInput" @change="handleFileSelection()"
                            class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                    <button type="submit" 
-                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Upload & Process
+                    <button type="submit" :disabled="uploading || selectedFiles.length === 0"
+                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span x-show="!uploading">📤 Upload & Process</span>
+                        <span x-show="uploading">⏳ Processing...</span>
                     </button>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">Supported formats: PDF, DOCX, TXT</p>
+                <p class="text-xs text-gray-500 mt-1">
+                    Supported: PDF, DOCX, TXT • <strong>Multiple files allowed</strong>
+                </p>
+            </div>
+
+            <!-- File List Display -->
+            <div x-show="selectedFiles.length > 0" class="mt-4">
+                <p class="text-sm font-medium text-gray-700 mb-2">Selected Files:</p>
+                <div class="space-y-2 max-h-32 overflow-y-auto">
+                    <template x-for="(file, index) in selectedFiles" :key="index">
+                        <div class="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span class="text-sm" x-text="file.name"></span>
+                            <span class="text-xs text-gray-500" x-text="(file.size / 1024 / 1024).toFixed(1) + ' MB'"></span>
+                            <button @click="removeFile(index)" type="button" class="text-red-500 hover:text-red-700">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+                <p class="text-xs text-blue-600 mt-1" x-text="`${selectedFiles.length} files selected`"></p>
+            </div>
+
+            <!-- Progress Indicator -->
+            <div x-show="uploading" class="mt-4">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-1 bg-gray-200 rounded-full h-2">
+                        <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                             :style="`width: ${uploadProgress}%`"></div>
+                    </div>
+                    <span class="text-sm text-gray-600" x-text="`${uploadProgress}%`"></span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1" x-text="currentStatus"></p>
             </div>
         </form>
     </div>
 
-    <!-- Categories Breakdown -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Categories</h3>
-            <div class="space-y-3">
-                {% for category, count in stats.categories.items() %}
-                <div class="flex justify-between items-center">
-                    <span class="text-gray-600 capitalize">{{ category }}</span>
-                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">{{ count }}</span>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
+    <script>
+    function bulkUpload() {
+        return {
+            selectedFiles: [],
+            uploading: false,
+            uploadProgress: 0,
+            currentStatus: '',
 
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">Languages</h3>
-            <div class="space-y-3">
-                {% for language, count in stats.languages.items() %}
-                <div class="flex justify-between items-center">
-                    <span class="text-gray-600">
-                        {% if language == 'en' %}English
-                        {% elif language == 'hi' %}Hindi (हिंदी)
-                        {% else %}{{ language }}
-                        {% endif %}
-                    </span>
-                    <span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">{{ count }}</span>
-                </div>
-                {% endfor %}
-            </div>
+            handleFileSelection() {
+                const files = Array.from(this.$refs.fileInput.files);
+                this.selectedFiles = files.filter(file => {
+                    const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+                    return validTypes.includes(file.type) && file.size < 50 * 1024 * 1024; // 50MB limit
+                });
+            },
+
+            removeFile(index) {
+                this.selectedFiles.splice(index, 1);
+                const dt = new DataTransfer();
+                this.selectedFiles.forEach(file => dt.items.add(file));
+                this.$refs.fileInput.files = dt.files;
+            },
+
+            async uploadFiles() {
+                if (this.selectedFiles.length === 0) return;
+
+                this.uploading = true;
+                this.uploadProgress = 0;
+                this.currentStatus = 'Preparing files...';
+
+                const formData = new FormData();
+                this.selectedFiles.forEach(file => {
+                    formData.append('files', file);
+                });
+
+                try {
+                    const response = await fetch('/admin/upload_documents', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        this.uploadProgress = 100;
+                        this.currentStatus = 'Upload complete!';
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                } catch (error) {
+                    this.currentStatus = 'Upload failed. Please try again.';
+                    console.error('Upload error:', error);
+                } finally {
+                    this.uploading = false;
+                }
+            }
+        }
+    }
+    </script>
+
+
+        <!-- Back to Chat -->
+        <div class="text-center mt-8">
+            <a href="/chat" class="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0L2.586 11H16a1 1 0 110 2H2.586l3.707 3.707a1 1 0 11-1.414 1.414l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L3.414 9H16a1 1 0 110 2H7.707z"></path>
+                </svg>
+                Test Enhanced Chatbot
+            </a>
         </div>
     </div>
-
-    <!-- Test Search -->
-    <div class="bg-white rounded-lg shadow-md p-6 mt-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Test Document Search</h3>
-        <div x-data="{ searchQuery: '', searchResults: [], loading: false }">
-            <div class="flex space-x-4 mb-4">
-                <input x-model="searchQuery" type="text" placeholder="Search campus documents..." 
-                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                <button @click="searchDocs()" :disabled="loading"
-                        class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
-                    <span x-show="!loading">Search</span>
-                    <span x-show="loading">Searching...</span>
-                </button>
-            </div>
-            
-            <div x-show="searchResults.length > 0" class="space-y-3">
-                <template x-for="result in searchResults" :key="result.id">
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-sm font-medium text-blue-600" x-text="result.metadata.category"></span>
-                            <span class="text-xs text-gray-500" x-text="'Score: ' + result.similarity_score.toFixed(2)"></span>
-                        </div>
-                        <p class="text-sm text-gray-800" x-text="result.content.substring(0, 200) + '...'"></p>
-                    </div>
-                </template>
-            </div>
-        </div>
-    </div>
-
-    <!-- Back to Chat -->
-    <div class="text-center mt-8">
-        <a href="/chat" class="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0L2.586 11H16a1 1 0 110 2H2.586l3.707 3.707a1 1 0 11-1.414 1.414l-5-5a1 1 0 010-1.414l5-5a1 1 0 011.414 1.414L3.414 9H16a1 1 0 110 2H7.707z"></path>
-            </svg>
-            Test Enhanced Chatbot
-        </a>
-    </div>
-</div>
 
 <script>
 function documentManager() {

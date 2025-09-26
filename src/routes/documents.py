@@ -166,3 +166,121 @@ def debug_search(query):
         })
     
     return jsonify(debug_info)
+
+@app.route('/admin/upload_documents', methods=['POST'])
+@login_required  
+def upload_documents_bulk():
+    """Enhanced bulk document upload with batch processing"""
+    
+    uploaded_files = request.files.getlist('files')
+    
+    if not uploaded_files or all(f.filename == '' for f in uploaded_files):
+        flash('No files selected', 'error')
+        return redirect(url_for('document_management'))
+    
+    # Filter out empty file selections
+    valid_files = [f for f in uploaded_files if f.filename != '' and allowed_file(f.filename)]
+    
+    if not valid_files:
+        flash('No valid files selected. Please upload PDF, DOCX, or TXT files.', 'error')
+        return redirect(url_for('document_management'))
+    
+    print(f"\n📁 Processing {len(valid_files)} files in bulk upload...")
+    
+    results = {
+        'successful': [],
+        'failed': [],
+        'total_faqs': 0,
+        'processing_time': 0
+    }
+    
+    import time
+    start_time = time.time()
+    
+    for file_index, file in enumerate(valid_files):
+        print(f"\n📄 Processing file {file_index + 1}/{len(valid_files)}: {file.filename}")
+        
+        try:
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(UPLOAD_FOLDER, f"{int(time.time())}_{filename}")  # Add timestamp to prevent conflicts
+            file.save(filepath)
+            
+            # Extract and validate text content
+            doc_data = doc_processor.extract_text_from_pdf(filepath)
+            print(f"  Extracted {len(doc_data['full_text'])} characters")
+            
+            if len(doc_data['full_text']) < 100:
+                results['failed'].append({
+                    'filename': filename,
+                    'error': 'Insufficient text content (likely image-based PDF)'
+                })
+                continue
+            
+            # Process and store the document
+            success = doc_processor.process_and_store_document(filepath)
+            
+            if success:
+                # Count FAQs extracted from this file
+                import sqlite3
+                conn = sqlite3.connect(doc_processor.db_path)
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) FROM campus_faqs WHERE source_file = ?", (filename,))
+                faq_count = cursor.fetchone()[0]
+                conn.close()
+                
+                results['successful'].append({
+                    'filename': filename,
+                    'faq_count': faq_count,
+                    'size_mb': round(len(doc_data['full_text']) / 1024, 2)
+                })
+                results['total_faqs'] += faq_count
+                
+                print(f"  ✅ Success: {faq_count} FAQs extracted")
+            else:
+                results['failed'].append({
+                    'filename': filename,
+                    'error': 'Processing failed during FAQ extraction'
+                })
+                print(f"  ❌ Failed: Processing error")
+                
+        except Exception as e:
+            results['failed'].append({
+                'filename': file.filename,
+                'error': str(e)
+            })
+            print(f"  ❌ Exception: {str(e)}")
+        
+        finally:
+            # Clean up temporary file
+            try:
+                if 'filepath' in locals() and os.path.exists(filepath):
+                    os.remove(filepath)
+            except:
+                pass
+    
+    # Calculate processing time
+    results['processing_time'] = round(time.time() - start_time, 2)
+    
+    # Generate detailed flash messages
+    if results['successful']:
+        success_files = [f['filename'] for f in results['successful']]
+        flash(f"✅ Successfully processed {len(results['successful'])} files: {', '.join(success_files[:3])}" + 
+              (f" and {len(success_files)-3} more" if len(success_files) > 3 else ""), 'success')
+        flash(f"📊 Extracted {results['total_faqs']} total FAQ entries in {results['processing_time']}s", 'info')
+    
+    if results['failed']:
+        failed_files = [f['filename'] for f in results['failed']]
+        flash(f"❌ Failed to process {len(results['failed'])} files: {', '.join(failed_files[:2])}" + 
+              (f" and {len(failed_files)-2} more" if len(failed_files) > 2 else ""), 'warning')
+        
+        # Show specific errors for first few failed files
+        for failed_file in results['failed'][:2]:
+            flash(f"  • {failed_file['filename']}: {failed_file['error']}", 'error')
+    
+    print(f"\n📊 Bulk upload completed:")
+    print(f"  ✅ Successful: {len(results['successful'])}")
+    print(f"  ❌ Failed: {len(results['failed'])}")
+    print(f"  📝 Total FAQs: {results['total_faqs']}")
+    print(f"  ⏱️ Time: {results['processing_time']}s")
+    
+    return redirect(url_for('document_management'))
