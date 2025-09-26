@@ -45,11 +45,11 @@ def upload_document():
         file.save(filepath)
         
         try:
-            print(f"\n🔄 Processing uploaded file: {filename}")
+            print(f"\nProcessing uploaded file: {filename}")
             
             # Extract text first to see what we're working with
             doc_data = doc_processor.extract_text_from_pdf(filepath)
-            print(f"📄 Extracted {len(doc_data['full_text'])} characters from PDF")
+            print(f"Extracted {len(doc_data['full_text'])} characters from PDF")
             
             if len(doc_data['full_text']) < 100:
                 flash(f'Warning: Very little text extracted from {filename}. File might be image-based or corrupted.', 'warning')
@@ -57,7 +57,7 @@ def upload_document():
             
             # Show a preview of extracted text
             preview = doc_data['full_text'][:500] + "..." if len(doc_data['full_text']) > 500 else doc_data['full_text']
-            print(f"📋 Text preview: {preview}")
+            print(f"Text preview: {preview}")
             
             # Process and store
             success = doc_processor.process_and_store_document(filepath)
@@ -78,20 +78,20 @@ def upload_document():
                 
                 conn.close()
                 
-                flash(f'✅ Successfully processed {filename}! Extracted {faq_count} FAQ items.', 'success')
+                flash(f'Successfully processed {filename}! Extracted {faq_count} FAQ items.', 'success')
                 
                 if sample_faqs:
                     sample_list = ", ".join([f"{faq[0][:50]}..." for faq in sample_faqs])
-                    flash(f'📝 Sample FAQs: {sample_list}', 'info')
+                    flash(f'Sample FAQs: {sample_list}', 'info')
                 else:
-                    flash('⚠️ No structured FAQs found. The content was stored as general text chunks.', 'warning')
+                    flash('No structured FAQs found. The content was stored as general text chunks.', 'warning')
                 
             else:
-                flash(f'❌ Failed to process {filename}', 'error')
+                flash(f'Failed to process {filename}', 'error')
                 
         except Exception as e:
             flash(f'Error processing document: {str(e)}', 'error')
-            print(f"❌ Processing error: {e}")
+            print(f"Processing error: {e}")
         
         # Clean up uploaded file
         try:
@@ -118,7 +118,7 @@ def clear_knowledge_base():
         conn.commit()
         conn.close()
         
-        flash('✅ Knowledge base cleared successfully!', 'success')
+        flash('Knowledge base cleared successfully!', 'success')
     except Exception as e:
         flash(f'Error clearing knowledge base: {str(e)}', 'error')
     

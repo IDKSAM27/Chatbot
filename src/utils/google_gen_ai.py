@@ -39,11 +39,11 @@ class GoogleAPIHandler:
     def search_knowledge_base(self, query: str) -> Dict[str, Any]:
         """Enhanced knowledge base search that uses the best match only"""
         try:
-            print(f"🔍 Searching knowledge base for: {query}")
+            print(f"Searching knowledge base for: {query}")
             results = self.doc_processor.search_documents(query, limit=3)
 
             if not results:
-                print("❌ No results found in knowledge base")
+                print("No results found in knowledge base")
                 return {
                     'has_context': False,
                     'context': "No specific campus information found for this query.",
@@ -54,14 +54,14 @@ class GoogleAPIHandler:
             relevant_results = [r for r in results if r['similarity_score'] > 0.2]
 
             if not relevant_results:
-                print("❌ No relevant results found")
+                print("No relevant results found")
                 return {
                     'has_context': False,
                     'context': "No relevant campus information found.",
                     'sources': []
                 }
 
-            print(f"✅ Found {len(relevant_results)} relevant results")
+            print(f"Found {len(relevant_results)} relevant results")
 
             # USE ONLY THE BEST RESULT (highest score)
             best_result = relevant_results[0]
@@ -73,7 +73,7 @@ class GoogleAPIHandler:
             # Create focused context using the best match
             context = f"Question: {best_question}\nAnswer: {best_answer}"
 
-            print(f"  🏆 Best Match: {best_question} (score: {best_result['similarity_score']:.2f})")
+            print(f"    Best Match: {best_question} (score: {best_result['similarity_score']:.2f})")
             print(f"      Answer: {best_answer[:50]}...")
 
             return {
@@ -90,7 +90,7 @@ class GoogleAPIHandler:
             }
         
         except Exception as e:
-            print(f"❌ Knowledge search error: {e}")
+            print(f"Knowledge search error: {e}")
             return {
                 'has_context': False,
                 'context': "Knowledge base search temporarily unavailable.",
@@ -104,7 +104,7 @@ class GoogleAPIHandler:
         if not self.prompt:
             self.refresh_prompt()
 
-        print(f"💬 Processing message: {message}")
+        print(f"Processing message: {message}")
 
         # Search knowledge base for relevant information
         kb_result = self.search_knowledge_base(message)
@@ -137,7 +137,7 @@ User Question: {message}
 Provide the official answer from the campus documents:
 """
 
-            print(f"🤖 Using direct match: {best_question}")
+            print(f"Using direct match: {best_question}")
 
         else:
             # Fallback prompt when no specific context is found
@@ -152,30 +152,29 @@ Please provide a helpful response:
 """
     
         try:
-            print(f"🤖 Sending to Gemini...")
-            
+            print(f"Sending to Gemini...")
+
             response = self.client.models.generate_content(
                 model="gemini-2.5-flash",
                 contents=enhanced_prompt
             )
-            
+
             if response and response.text:
                 clean_response = response.text.strip()
-                print(f"✅ Generated response: {clean_response[:100]}...")
+                print(f"Generated response: {clean_response[:100]}...")
                 return ChatResponse(response=clean_response)
             else:
-                print("❌ No response from Gemini")
+                print("No response from Gemini")
                 # If AI fails but we have campus context, return it directly
                 if kb_result['has_context']:
                     direct_response = f"According to our campus documents, {kb_result.get('best_answer', '')}"
                     return ChatResponse(response=direct_response)
                 return None
-                
+
         except Exception as e:
-            print(f"❌ Gemini API Error: {e}")
+            print(f"Gemini API Error: {e}")
             # Fallback to document-only response if AI fails
             if kb_result['has_context']:
                 fallback_response = f"According to our campus documents: {kb_result.get('best_answer', '')}"
                 return ChatResponse(response=fallback_response)
             return None
-    

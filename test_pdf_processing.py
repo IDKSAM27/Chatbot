@@ -3,7 +3,7 @@ from src.utils.document_processor import CampusDocumentProcessor
 def test_with_sample_data():
     """Test document processing with sample campus data"""
     
-    print("🚀 Testing Campus Document Processor...")
+    print("Testing Campus Document Processor...")
     processor = CampusDocumentProcessor()
     
     # Create sample campus text (simulate PDF content)
@@ -44,7 +44,7 @@ def test_with_sample_data():
     # Parse FAQs from sample text
     faqs = processor.parse_campus_faqs(sample_campus_text)
     
-    print(f"📝 Extracted {len(faqs)} FAQ items:")
+    print(f"Extracted {len(faqs)} FAQ items:")
     for i, faq in enumerate(faqs[:5]):  # Show first 5
         print(f"\n{i+1}. Category: {faq['category']}")
         print(f"   Question: {faq['question']}")
@@ -52,7 +52,7 @@ def test_with_sample_data():
         print(f"   Language: {faq['language']}")
     
     # Test search functionality
-    print("\n🔍 Testing search functionality:")
+    print("\nTesting search functionality:")
     test_queries = [
         "How to pay fees online?",
         "scholarship information",
@@ -88,7 +88,7 @@ def test_with_sample_data():
     
     # Show statistics
     stats = processor.get_statistics()
-    print(f"\n📊 Statistics:")
+    print(f"\nStatistics:")
     print(f"  Total FAQs: {stats['total_documents']}")
     print(f"  Categories: {stats['categories']}")
     print(f"  Languages: {stats['languages']}")

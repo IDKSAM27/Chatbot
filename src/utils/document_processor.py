@@ -110,11 +110,11 @@ class CampusDocumentProcessor:
                         extracted_data['pages'].append(page_data)
                         extracted_data['full_text'] += f"\n--- Page {page_num + 1} ---\n{page_text}"
                     
-                    print(f"✅ Extracted {len(extracted_data['pages'])} pages using pdfplumber")
+                    print(f"Extracted {len(extracted_data['pages'])} pages using pdfplumber")
                     return extracted_data
                     
             except Exception as e:
-                print(f"⚠️ pdfplumber failed: {e}, trying PyPDF2...")
+                print(f"pdfplumber failed: {e}, trying PyPDF2...")
         
         # Fallback to PyPDF2
         try:
@@ -139,10 +139,10 @@ class CampusDocumentProcessor:
                     extracted_data['pages'].append(page_data)
                     extracted_data['full_text'] += f"\n--- Page {page_num + 1} ---\n{page_text}"
                 
-                print(f"✅ Extracted {len(extracted_data['pages'])} pages using PyPDF2")
+                print(f"Extracted {len(extracted_data['pages'])} pages using PyPDF2")
                 
         except Exception as e:
-            print(f"❌ PDF extraction failed: {e}")
+            print(f"PDF extraction failed: {e}")
         
         return extracted_data
 
@@ -179,12 +179,12 @@ class CampusDocumentProcessor:
         faqs = []
         text_lower = text.lower()
 
-        print(f"📝 Parsing {len(text)} characters of text...")
-        print(f"🔍 Sample text: {text[:300]}...")
+        print(f"Parsing {len(text)} characters of text...")
+        print(f"Sample text: {text[:300]}...")
 
         # Dynamic fee extraction (detects patterns, doesn't hardcode values)
         if any(keyword in text_lower for keyword in ['fee', 'tuition', 'cost', 'payment', 'price']):
-            print("💰 Detected fee-related content, using dynamic extraction...")
+            print("Detected fee-related content, using dynamic extraction...")
 
             # Extract fee information dynamically
             fee_faqs = self._extract_fee_information_dynamically(text)
@@ -222,7 +222,7 @@ class CampusDocumentProcessor:
         content_faqs = self._extract_content_sections_dynamically(text)
         faqs.extend(content_faqs)
 
-        print(f"📊 Total extracted FAQs: {len(faqs)}")
+        print(f"Total extracted FAQs: {len(faqs)}")
         return faqs
 
     def _extract_fee_information_dynamically(self, text: str) -> List[Dict[str, str]]:
@@ -285,9 +285,9 @@ class CampusDocumentProcessor:
                             'priority': priority,
                             'amount_num': amount_num
                         }
-                        print(f"    ✅ Updated: {course} -> Rs. {amount} (priority: {priority})")
+                        print(f"     Updated: {course} -> Rs. {amount} (priority: {priority})")
                     else:
-                        print(f"    ⏭️ Skipped: {course} -> Rs. {amount} (lower priority)")
+                        print(f"    ⏭ Skipped: {course} -> Rs. {amount} (lower priority)")
 
         # Convert found_fees to FAQs
         for fee_data in found_fees.values():
@@ -309,7 +309,7 @@ class CampusDocumentProcessor:
                 'category': 'fees'
             })
 
-        print(f"💰 Dynamically extracted {len(fee_faqs)} deduplicated fee FAQs")
+        print(f"Dynamically extracted {len(fee_faqs)} deduplicated fee FAQs")
         return fee_faqs
 
 
@@ -356,9 +356,9 @@ class CampusDocumentProcessor:
                                 'language': 'en',
                                 'category': self._categorize_faq(key_part)
                             })
-                            print(f"    📊 Table: {key_part} -> Rs. {amounts[0]}")
+                            print(f"      Table: {key_part} -> Rs. {amounts[0]}")
 
-        print(f"📋 Dynamically extracted {len(table_faqs)} table FAQs")
+        print(f"Dynamically extracted {len(table_faqs)} table FAQs")
         return table_faqs
 
     def _extract_content_sections_dynamically(self, text: str) -> List[Dict[str, str]]:
@@ -389,9 +389,9 @@ class CampusDocumentProcessor:
                     'language': self.detect_language(paragraph),
                     'category': self._categorize_faq(' '.join(key_terms))
                 })
-                print(f"    📄 Section: {question[:50]}...")
+                print(f"      Section: {question[:50]}...")
 
-        print(f"📑 Dynamically extracted {len(section_faqs)} content sections")
+        print(f"Dynamically extracted {len(section_faqs)} content sections")
         return section_faqs
 
     def _extract_key_terms(self, text: str) -> List[str]:
@@ -501,18 +501,18 @@ class CampusDocumentProcessor:
         """Process PDF and store in SQLite database"""
         
         try:
-            print(f"📖 Processing document: {pdf_path}")
+            print(f"Processing document: {pdf_path}")
             
             # Extract text from PDF
             doc_data = self.extract_text_from_pdf(pdf_path)
             
             if not doc_data['full_text'].strip():
-                print(f"⚠️ No text extracted from {pdf_path}")
+                print(f"No text extracted from {pdf_path}")
                 return False
             
             # Parse FAQs from the document
             faqs = self.parse_campus_faqs(doc_data['full_text'])
-            print(f"📝 Extracted {len(faqs)} FAQ items")
+            print(f"Extracted {len(faqs)} FAQ items")
             
             # Store in SQLite database
             conn = sqlite3.connect(self.db_path)
@@ -537,11 +537,11 @@ class CampusDocumentProcessor:
             conn.commit()
             conn.close()
             
-            print(f"✅ Successfully processed and stored: {pdf_path}")
+            print(f"Successfully processed and stored: {pdf_path}")
             return True
             
         except Exception as e:
-            print(f"❌ Failed to process {pdf_path}: {e}")
+            print(f"Failed to process {pdf_path}: {e}")
             return False
 
     def _create_text_chunks(self, text: str, max_length: int = 500) -> List[str]:
@@ -577,14 +577,14 @@ class CampusDocumentProcessor:
 
             # Normalize query for better matching
             query_lower = query.lower().strip()
-            print(f"🔍 Original query: '{query}' -> Normalized: '{query_lower}'")
+            print(f"Original query: '{query}' -> Normalized: '{query_lower}'")
 
             # Extract course names from query
             course_keywords = self._extract_course_from_query(query_lower)
             fee_keywords = self._extract_fee_type_from_query(query_lower)
 
-            print(f"📚 Detected courses: {course_keywords}")
-            print(f"💰 Detected fee types: {fee_keywords}")
+            print(f"Detected courses: {course_keywords}")
+            print(f"Detected fee types: {fee_keywords}")
 
             # Build search query with course-specific matching
             search_conditions = []
@@ -669,11 +669,11 @@ class CampusDocumentProcessor:
             search_results.sort(key=lambda x: x['similarity_score'], reverse=True)
 
             conn.close()
-            print(f"✅ Returning {len(search_results)} results")
+            print(f"Returning {len(search_results)} results")
             return search_results
 
         except Exception as e:
-            print(f"❌ Search error: {e}")
+            print(f"Search error: {e}")
             return []
         
     def _extract_course_from_query(self, query: str) -> List[str]:
@@ -720,37 +720,37 @@ class CampusDocumentProcessor:
 
     def _calculate_enhanced_relevance(self, query: str, question: str, answer: str, course_keywords: List[str], fee_keywords: List[str]) -> float:
         """Calculate relevance score with course and fee type weighting"""
-        
+
         question_lower = question.lower()
         answer_lower = answer.lower()
-        
+
         score = 0.0
-        
+
         # Course matching (high weight)
         for course in course_keywords:
             if course in question_lower:
                 score += 0.5  # High score for course in question
             elif course in answer_lower:
                 score += 0.3  # Medium score for course in answer
-        
+
         # Fee type matching (medium weight)
         for fee_type in fee_keywords:
             if fee_type in question_lower:
                 score += 0.3
             elif fee_type in answer_lower:
                 score += 0.2
-        
+
         # General keyword matching (low weight)
         query_words = set(query.split())
         question_words = set(question_lower.split())
         answer_words = set(answer_lower.split())
-        
+
         question_overlap = len(query_words.intersection(question_words)) / len(query_words) if query_words else 0
         answer_overlap = len(query_words.intersection(answer_words)) / len(query_words) if query_words else 0
-        
+
         score += question_overlap * 0.2
         score += answer_overlap * 0.1
-        
+
         # Cap score at 1.0
         return min(score, 1.0)
 
@@ -800,5 +800,5 @@ class CampusDocumentProcessor:
             }
             
         except Exception as e:
-            print(f"❌ Statistics error: {e}")
+            print(f"Statistics error: {e}")
             return {'total_documents': 0, 'categories': {}, 'languages': {}, 'document_types': {}}
