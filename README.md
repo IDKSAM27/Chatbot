@@ -1,8 +1,6 @@
-# WIP
-
 ## Language Agnostic Chatbot
 
-A multilingual chatbot for colleges that answers routine student queries (fees, forms, timetable changes) in **Hindi, English, and other regional languages**. Built to reduce staff workload, provide 24/7 access, and integrate with both web and messaging platforms.
+A multilingual chatbot for colleges that answers FAQ's in multiple languages.
 
 ## How to Run?:
 
