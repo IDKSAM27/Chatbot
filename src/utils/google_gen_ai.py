@@ -22,7 +22,7 @@ class GoogleAPIHandler:
 
         self.gemini_api_key = GEMINI_API_KEY
         self.client = genai.Client(api_key=self.gemini_api_key)
-        print("✅ Gemini API key working!")
+        print("Gemini API key working!")
         self.prompt = ""
 
     def refresh_prompt(self):
