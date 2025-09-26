@@ -1,0 +1,84 @@
+{% extends "base.jinja" %}
+{% set body_class = "bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-500" %}
+
+{% block content %}
+<section class="flex flex-col h-screen px-4 py-6 max-w-4xl mx-auto" x-data="chatApp()">
+    <h2 class="text-2xl font-bold text-center text-blue-600 mb-6">Chat with the AI Assistant</h2>
+
+    <!-- Chat messages -->
+    <div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 rounded-lg p-4 space-y-4 shadow-md"
+         id="chat-messages"
+         x-ref="chatBox">
+        <template x-for="msg in messages" :key="msg.id">
+            <div :class="msg.sender === 'user' ? 'text-right' : 'text-left'">
+                <div :class="msg.sender === 'user' 
+                             ? 'inline-block bg-blue-600 text-white' 
+                             : 'inline-block bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100'"
+                     class="px-4 py-2 rounded-lg max-w-xs break-words">
+                    <p x-text="msg.text"></p>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Chat input -->
+    <form @submit.prevent="sendMessage" class="mt-4 flex items-center gap-2">
+        <input type="text"
+               x-model="newMessage"
+               placeholder="Type your message..."
+               class="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring focus:border-blue-400"
+               required />
+
+        <button type="submit"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+            Send
+        </button>
+    </form>
+
+    <!-- Typing indicator -->
+    <div x-show="typing" class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        Assistant is typing...
+    </div>
+</section>
+
+<script>
+    function chatApp() {
+        return {
+            messages: [
+                { id: 1, sender: 'bot', text: 'Hi! How can I help you today?' }
+            ],
+            newMessage: '',
+            typing: false,
+            idCounter: 2,
+            async sendMessage() {
+                if (!this.newMessage.trim()) return;
+
+                // Add user message
+                this.messages.push({ id: this.idCounter++, sender: 'user', text: this.newMessage });
+                const userInput = this.newMessage;
+                this.newMessage = '';
+                this.typing = true;
+
+                this.scrollToBottom();
+
+                // Simulate delay / API call
+                setTimeout(() => {
+                    const response = this.generateFakeResponse(userInput);
+                    this.messages.push({ id: this.idCounter++, sender: 'bot', text: response });
+                    this.typing = false;
+                    this.scrollToBottom();
+                }, 1000);
+            },
+            generateFakeResponse(input) {
+                // Replace this with actual API call
+                return `You said: "${input}". This is a placeholder response.`;
+            },
+            scrollToBottom() {
+                this.$nextTick(() => {
+                    this.$refs.chatBox.scrollTop = this.$refs.chatBox.scrollHeight;
+                });
+            }
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if title %}
+        <title>{{ title }}</title>
+    {% else %}
+        <title>Language Agnostic Chatbot</title>
+    {% endif %}
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+    <script src="//unpkg.com/alpinejs" defer></script>
+
+</head>
+
+<body class="{{ body_class }}">
+    {% block content %}
+    {% endblock %}
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div class="fixed top-4 right-4 z-50 space-y-4">
+            {% for category, message in messages %}
+                <div 
+                    x-data="{ show: true }"
+                    x-init="setTimeout(() => show = false, 4000)"
+                    x-show="show"
+                    x-transition
+                    class="animate__animated animate__fadeInDown px-4 py-3 rounded shadow-lg text-white 
+                        {% if category == 'success' %}
+                            bg-green-500
+                        {% elif category == 'error' %}
+                            bg-red-500
+                        {% elif category == 'warning' %}
+                            bg-yellow-500 text-black
+                        {% else %}
+                            bg-blue-500
+                        {% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% endwith %}
+
+    {% block scripts %}
+    {% endblock %}
+</body>
+</html>

@@ -1,0 +1,35 @@
+name: Lint and Format Python Code
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: write
+
+jobs:
+  lint-and-fix:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@main
+
+      - name: Set up Python
+        uses: actions/setup-python@main
+        with:
+          python-version: '3.12'
+
+      - name: Install tools
+        run: |
+          pip install ruff black isort
+
+      - name: Run Ruff Fixes
+        run: ruff check .
+
+      - name: Run Black
+        run: black --check . -l 135 --diff --color
+
+      - name: Run isort
+        run: isort --check-only --diff . --profile black

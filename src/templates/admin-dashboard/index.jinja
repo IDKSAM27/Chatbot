@@ -1,0 +1,7 @@
+{% extends "base.jinja" %}
+
+{% from "admin-dashboard/sidebar-overview.jinja" import overview with context %}
+
+{% block content %}
+    {{ overview() }}
+{% endblock content %}

@@ -1,0 +1,19 @@
+{% macro overview() %}
+
+{% endmacro %}
+
+{% macro kpi_card(title, value, trend) %}
+    <div class="p-4 bg-white rounded-lg border border-slate-200">
+        <div class="text-xs text-slate-500">{{ title }}</div>
+        <div class="text-2xl font-semibold">{{ value }}</div>
+        <div class="text-sm text-green-600 mt-1">{{ trend }}</div>
+    </div>
+{% endmacro %}
+
+{% macro overview_script() %}
+    <script>
+        function initOverview() {
+            // TODO: Implement overview initialization logic
+        }
+    </script>
+{% endmacro %}

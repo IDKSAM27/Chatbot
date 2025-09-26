@@ -1,0 +1,17 @@
+__pycache__/
+*.py[codz]
+*$py.class
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-shm
+db.sqlite3-wal
+instance/
+.webassets-cache
+.env
+.venv
+venv/
+env.bak/
+venv.bak/
+.vscode/
+.ruff_cache/

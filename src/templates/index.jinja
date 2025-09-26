@@ -1,0 +1,83 @@
+{% extends "base.jinja" %}
+{% set body_class = "bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-500" %}
+
+{% block content %}
+
+
+<nav class="w-full bg-white dark:bg-gray-800 shadow-md px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+    <h1 class="text-xl font-bold text-blue-600">Language Agnostic Chatbot</h1>
+    {% if user.is_authenticated %}
+    <div class="space-x-4">
+        <a href="{{ url_for('chat') }}"
+            class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition">Go to Chat</a>
+        <a href="{{ url_for('logout') }}"
+            class="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 font-medium hover:bg-blue-50 dark:hover:bg-gray-700 transition">Logout</a>
+    </div>
+    {% else %}
+    <div class="space-x-4">
+        <a href="{{ url_for('login') }}"
+            class="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition">Login</a>
+        <a href="{{ url_for('register') }}"
+            class="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 font-medium hover:bg-blue-50 dark:hover:bg-gray-700 transition">Register</a>
+    </div>
+    {% endif %}
+</nav>
+
+
+<section
+    class="flex flex-col items-center text-center px-6 py-20 bg-gradient-to-b from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
+    <h2 class="text-4xl font-extrabold mb-6">Your Campus Questions, Answered Instantly</h2>
+    <p class="max-w-3xl text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+        Tired of standing in long queues or scrolling through endless PDFs just to find a date or form?
+        Our <span class="font-semibold text-blue-600">Language Agnostic Chatbot</span> is here to help — in English, Hindi, or
+        your local language.
+        Ask anything about fees, scholarships, timetables, or campus updates, and get answers instantly, anytime.
+    </p>
+    <div class="mt-8">
+        {% if user.is_authenticated %}
+        <a href="{{ url_for('chat') }}"
+            class="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Go to Chat</a>
+        {% else %}
+        <a href="{{ url_for('register') }}"
+            class="px-6 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">Try It
+            Now</a>
+        {% endif %}
+    </div>
+</section>
+
+
+<section class="px-6 py-16 max-w-6xl mx-auto grid md:grid-cols-3 gap-8">
+    <div class="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-lg transition">
+        <i class="fas fa-language text-blue-600 text-3xl mb-4"></i>
+        <h3 class="text-xl font-semibold mb-2">Talk in Your Language</h3>
+        <p class="text-gray-600 dark:text-gray-300 text-sm">
+            Whether you prefer English, Hindi, or a local language — the chatbot speaks your way.
+        </p>
+    </div>
+
+    <div class="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-lg transition">
+        <i class="fas fa-bolt text-blue-600 text-3xl mb-4"></i>
+        <h3 class="text-xl font-semibold mb-2">Instant Answers</h3>
+        <p class="text-gray-600 dark:text-gray-300 text-sm">
+            No more waiting in lines or searching notice boards — get answers right when you need them.
+        </p>
+    </div>
+
+    <div class="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-md hover:shadow-lg transition">
+        <i class="fas fa-users text-blue-600 text-3xl mb-4"></i>
+        <h3 class="text-xl font-semibold mb-2">Student-Friendly</h3>
+        <p class="text-gray-600 dark:text-gray-300 text-sm">
+            Built to save your time and reduce stress — so you can focus on your studies and campus life.
+        </p>
+    </div>
+</section>
+
+
+<footer class="w-full bg-gray-200 dark:bg-gray-800 text-center py-4 mt-10">
+    <p class="text-sm text-gray-700 dark:text-gray-400">
+        © 2025 Language Agnostic Chatbot Project —
+        <a href="https://github.com/nitishkumar2602/language-agnostic-chatbot" target="_blank" class="text-blue-600 hover:underline">View on
+            GitHub</a>
+    </p>
+</footer>
+{% endblock %}

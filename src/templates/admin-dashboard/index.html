@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin Dashboard — Multilingual Campus Chatbot</title>
+
+    <!-- Tailwind CDN (play-cdn for quick prototype) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js for light interactivity -->
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        .glass {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(6px);
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 text-slate-800 font-sans">
+    <div class="min-h-screen flex" x-data="dashboard()">
+
+        <!-- SIDEBAR -->
+        <aside class="w-72 bg-white border-r border-slate-200 p-6 flex flex-col">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-indigo-600 text-white rounded flex items-center justify-center font-bold">CC</div>
+                <div>
+                    <div class="text-lg font-semibold">Campus Chat Admin</div>
+                    <div class="text-xs text-slate-500">multilingual assistant</div>
+                </div>
+            </div>
+
+            <nav class="flex-1 text-sm">
+                <a class="block py-2 px-3 rounded-lg hover:bg-slate-100" :class="{ 'bg-slate-100': page=='overview' }" @click="page='overview'">Overview</a>
+                <a class="block py-2 px-3 rounded-lg hover:bg-slate-100" :class="{ 'bg-slate-100': page=='conversations' }"
+                    @click="page='conversations'">Conversations</a>
+                <a class="block py-2 px-3 rounded-lg hover:bg-slate-100" :class="{ 'bg-slate-100': page=='kb' }" @click="page='kb'">Knowledge Base</a>
+                <a class="block py-2 px-3 rounded-lg hover:bg-slate-100" :class="{ 'bg-slate-100': page=='analytics' }" @click="page='analytics'">Analytics</a>
+                <a class="block py-2 px-3 rounded-lg hover:bg-slate-100" :class="{ 'bg-slate-100': page=='integrations' }" @click="page='integrations'">Integrations</a>
+                <a class="block py-2 px-3 rounded-lg hover:bg-slate-100" :class="{ 'bg-slate-100': page=='settings' }" @click="page='settings'">Settings</a>
+            </nav>
+
+            <div class="mt-6">
+                <button @click="openQuickAdd=true" class="w-full py-2 px-3 bg-indigo-600 text-white rounded-lg text-sm">+ Add FAQ</button>
+            </div>
+
+            <div class="text-xs text-slate-500 mt-4">v0.1 • prototype</div>
+        </aside>
+
+        <main class="flex-1 p-6">
+            <header class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-4">
+                    <h1 class="text-2xl font-semibold">Admin Dashboard</h1>
+                    <div class="text-sm text-slate-500">Manage conversations, KB, languages and integrations</div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1 text-sm">
+                        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h18M3 12h18M3 19h18"></path>
+                        </svg>
+                        <select x-model="selectedLang" class="text-sm outline-none bg-transparent">
+                            <option value="all">All Languages</option>
+                            <option value="en">English</option>
+                            <option value="hi">Hindi</option>
+                            <option value="bn">Bengali</option>
+                            <option value="ta">Tamil</option>
+                            <option value="mr">Marathi</option>
+                        </select>
+                    </div>
+
+                    <!-- notifications -->
+                    <button class="relative p-2 rounded-lg hover:bg-slate-100">
+                        <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9">
+                            </path>
+                        </svg>
+                        <span class="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">3</span>
+                    </button>
+
+                    <!-- admin avatar -->
+                    <div class="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1">
+                        <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center">AR</div>
+                        <div class="text-sm">
+                            <div class="font-medium">Admin</div>
+                            <div class="text-xs text-slate-500">admin@college.edu</div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- CONTENT PANELS -->
+            <section x-show="page=='overview'" class="space-y-6">
+
+                <!-- KPI CARDS -->
+                <div class="grid grid-cols-4 gap-4">
+                    <div class="p-4 bg-white rounded-lg border border-slate-200">
+                        <div class="text-xs text-slate-500">Daily Sessions</div>
+                        <div class="text-2xl font-semibold">1,248</div>
+                        <div class="text-sm text-green-600 mt-1">+8% vs yesterday</div>
+                    </div>
+
+                    <div class="p-4 bg-white rounded-lg border border-slate-200">
+                        <div class="text-xs text-slate-500">Unresolved</div>
+                        <div class="text-2xl font-semibold">24</div>
+                        <div class="text-sm text-red-600 mt-1">Escalate to staff</div>
+                    </div>
+
+                    <div class="p-4 bg-white rounded-lg border border-slate-200">
+                        <div class="text-xs text-slate-500">Top Language</div>
+                        <div class="text-2xl font-semibold">Hindi</div>
+                        <div class="text-sm text-slate-500 mt-1">42% of queries</div>
+                    </div>
+
+                    <div class="p-4 bg-white rounded-lg border border-slate-200">
+                        <div class="text-xs text-slate-500">Avg. Response Accuracy</div>
+                        <div class="text-2xl font-semibold">87%</div>
+                        <div class="text-sm text-slate-500 mt-1">Based on validated logs</div>
+                    </div>
+                </div>
+
+                <!-- Quick Search + Filters -->
+                <div class="flex gap-4">
+                    <div class="flex-1 bg-white rounded-lg border border-slate-200 p-4">
+                        <div class="flex items-center gap-3">
+                            <input x-model="query" type="text" placeholder="Search conversations or keywords..." class="flex-1 outline-none text-sm" />
+                            <button @click="search()" class="py-1 px-3 bg-indigo-600 text-white rounded">Search</button>
+                        </div>
+
+                        <div class="mt-4 text-xs text-slate-500 flex gap-2">
+                            <div>Filters:</div>
+                            <button @click="setFilter('today')" class="px-2 py-1 rounded bg-slate-100">Today</button>
+                            <button @click="setFilter('week')" class="px-2 py-1 rounded bg-slate-100">This week</button>
+                            <button @click="setFilter('unresolved')" class="px-2 py-1 rounded bg-slate-100">Unresolved</button>
+                        </div>
+                    </div>
+
+                    <div class="w-80 bg-white rounded-lg border border-slate-200 p-4">
+                        <div class="text-sm font-medium mb-2">Recent Activity</div>
+                        <ul class="space-y-3 text-sm">
+                            <li class="flex justify-between"><span>New FAQ added</span><span class="text-slate-400">10m</span></li>
+                            <li class="flex justify-between"><span>10 escalations</span><span class="text-slate-400">1h</span></li>
+                            <li class="flex justify-between"><span>Model retrain scheduled</span><span class="text-slate-400">Today</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- UNRESOLVED TABLE -->
+                <div class="bg-white rounded-lg border border-slate-200 p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="text-lg font-medium">Unresolved Conversations</div>
+                        <div class="text-sm text-slate-500">Total: <span class="font-semibold">24</span></div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm table-auto">
+                            <thead class="text-slate-500 text-left">
+                                <tr>
+                                    <th class="py-2">ID</th>
+                                    <th class="py-2">User Message</th>
+                                    <th class="py-2">Language</th>
+                                    <th class="py-2">Timestamp</th>
+                                    <th class="py-2">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y">
+                                <template x-for="c in unresolved" :key="c.id">
+                                    <tr>
+                                        <td class="py-3"> <span class="text-indigo-600 font-medium" x-text="c.id"></span> </td>
+                                        <td class="py-3" x-text="c.snippet"></td>
+                                        <td class="py-3" x-text="c.lang"></td>
+                                        <td class="py-3" x-text="c.ts"></td>
+                                        <td class="py-3">
+                                            <button class="text-sm px-3 py-1 rounded bg-amber-100">Assign</button>
+                                            <button class="text-sm px-3 py-1 rounded bg-red-100 ml-2">Escalate</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Conversations page skeleton -->
+            <section x-show="page=='conversations'" class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold">Conversations</h2>
+                    <div class="text-sm text-slate-500">Search and review individual sessions</div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-1 bg-white rounded-lg border p-4">
+                        <div class="mb-3 text-sm font-medium">Sessions</div>
+                        <ul class="text-sm divide-y">
+                            <li class="py-2 hover:bg-slate-50 cursor-pointer">#S-10234 — Fee deadline question</li>
+                            <li class="py-2 hover:bg-slate-50 cursor-pointer">#S-10205 — Scholarship form</li>
+                            <li class="py-2 hover:bg-slate-50 cursor-pointer">#S-10188 — Timetable change</li>
+                        </ul>
+                    </div>
+
+                    <div class="col-span-2 bg-white rounded-lg border p-4">
+                        <div class="text-sm font-medium mb-2">Session preview</div>
+                        <div class="h-64 border rounded p-3 text-sm overflow-auto">Select a session to view messages. Session view shows messages, detected intents,
+                            confidence, and available actions: mark resolved, flag for retrain, escalate to staff.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Knowledge base page skeleton -->
+            <section x-show="page=='kb'" class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-xl font-semibold">Knowledge Base</h2>
+                    <div class="flex gap-2">
+                        <button class="py-1 px-3 bg-slate-100 rounded">Import CSV</button>
+                        <button class="py-1 px-3 bg-indigo-600 text-white rounded">New FAQ</button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg border p-4">
+                    <div class="text-sm text-slate-500 mb-3">Search and manage FAQ entries, translations and categories.</div>
+
+                    <table class="w-full text-sm table-auto">
+                        <thead class="text-slate-500 text-left">
+                            <tr>
+                                <th class="py-2">Question</th>
+                                <th class="py-2">Answer</th>
+                                <th class="py-2">Languages</th>
+                                <th class="py-2">Tags</th>
+                                <th class="py-2">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y">
+                            <tr>
+                                <td class="py-3">How to pay fees?</td>
+                                <td class="py-3">Online through portal</td>
+                                <td class="py-3">EN, HI</td>
+                                <td class="py-3">fees,payment</td>
+                                <td class="py-3"><button class="px-3 py-1 bg-slate-100 rounded">Edit</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- placeholder for other pages -->
+            <section x-show="['analytics','integrations','settings'].includes(page)" class="bg-white rounded-lg border p-6">
+                <div class="text-lg font-semibold capitalize" x-text="page"></div>
+                <div class="mt-4 text-sm text-slate-500">Page scaffold. Populate with charts, integration keys and settings forms as needed.</div>
+            </section>
+
+        </main>
+    </div>
+
+
+    <script>
+        function dashboard() {
+            return {
+                page: 'overview',
+                selectedLang: 'all',
+                query: '',
+                openQuickAdd: false,
+                unresolved: [
+                    { id: 'S-10234', snippet: 'Unable to pay fees via portal', lang: 'hi', ts: '2025-09-10 14:23' },
+                    { id: 'S-10235', snippet: 'Scholarship form link broken', lang: 'en', ts: '2025-09-10 12:11' },
+                    { id: 'S-10236', snippet: 'Request timetable for semester 2', lang: 'bn', ts: '2025-09-09 10:02' },
+                ],
+                newFAQ: { q: '', a: '', lang: 'en' },
+                search() {
+                    alert('Search stub. Implement backend call to query logs: ' + this.query);
+                },
+                setFilter(f) {
+                    alert('Filter stub: ' + f);
+                },
+                addFAQ() {
+                    // local prototype push. Replace with API call.
+                    if (!this.newFAQ.q || !this.newFAQ.a) { alert('Provide question and answer'); return }
+                    // pretend saved
+                    alert('Saved FAQ: ' + this.newFAQ.q + ' (' + this.newFAQ.lang + ')');
+                    this.openQuickAdd = false;
+                    this.newFAQ = { q: '', a: '', lang: 'en' };
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>
