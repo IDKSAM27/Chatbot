@@ -37,11 +37,11 @@ class GoogleAPIHandler:
             Keep responses concise and student-friendly."""
 
     def search_knowledge_base(self, query: str) -> Dict[str, Any]:
-        """Enhanced knowledge base search with better context"""
+        """Enhanced knowledge base search that uses the best match only"""
         try:
             print(f"🔍 Searching knowledge base for: {query}")
-            results = self.doc_processor.search_documents(query, limit=5)
-            
+            results = self.doc_processor.search_documents(query, limit=3)
+
             if not results:
                 print("❌ No results found in knowledge base")
                 return {
@@ -49,10 +49,10 @@ class GoogleAPIHandler:
                     'context': "No specific campus information found for this query.",
                     'sources': []
                 }
-            
+
             # Filter for high-quality results
             relevant_results = [r for r in results if r['similarity_score'] > 0.2]
-            
+
             if not relevant_results:
                 print("❌ No relevant results found")
                 return {
@@ -60,80 +60,85 @@ class GoogleAPIHandler:
                     'context': "No relevant campus information found.",
                     'sources': []
                 }
-            
+
             print(f"✅ Found {len(relevant_results)} relevant results")
-            
-            # Build comprehensive context
-            context_parts = []
-            sources = []
-            
-            for i, result in enumerate(relevant_results[:3]):  # Top 3 results
-                score = result['similarity_score']
-                content = result['content'].strip()
-                metadata = result['metadata']
-                
-                # Clean up content
-                if len(content) > 300:
-                    content = content[:300] + "..."
-                
-                context_parts.append(f"• {content}")
-                sources.append({
-                    'category': metadata.get('category', 'general'),
-                    'score': score,
-                    'source_file': metadata.get('source_file', 'unknown')
-                })
-                
-                print(f"  Result {i+1}: {metadata.get('category', 'N/A')} (score: {score:.2f})")
-            
-            context = "\n".join(context_parts)
-            
+
+            # USE ONLY THE BEST RESULT (highest score)
+            best_result = relevant_results[0]
+
+            # Get the exact question and answer from the best match
+            best_question = best_result['metadata']['question']
+            best_answer = best_result['content'].strip()
+
+            # Create focused context using the best match
+            context = f"Question: {best_question}\nAnswer: {best_answer}"
+
+            print(f"  🏆 Best Match: {best_question} (score: {best_result['similarity_score']:.2f})")
+            print(f"      Answer: {best_answer[:50]}...")
+
             return {
                 'has_context': True,
                 'context': context,
-                'sources': sources,
+                'best_question': best_question,
+                'best_answer': best_answer,
+                'sources': [{
+                    'category': best_result['metadata'].get('category', 'general'),
+                    'score': best_result['similarity_score'],
+                    'source_file': best_result['metadata'].get('source_file', 'unknown')
+                }],
                 'total_results': len(relevant_results)
             }
-            
+        
         except Exception as e:
             print(f"❌ Knowledge search error: {e}")
             return {
                 'has_context': False,
-                'context': f"Knowledge base search error: {str(e)}",
+                'context': "Knowledge base search temporarily unavailable.",
                 'sources': []
             }
 
+
     def chat(self, message: str) -> Optional[ChatResponse]:
-        """Enhanced chat with prominent document context"""
-        
+        """Enhanced chat with direct answer from best match"""
+
         if not self.prompt:
             self.refresh_prompt()
-        
+
         print(f"💬 Processing message: {message}")
-        
+
         # Search knowledge base for relevant information
         kb_result = self.search_knowledge_base(message)
-        
-        if kb_result['has_context']:
-            # Create context-heavy prompt when we have good information
-            enhanced_prompt = f"""
-You are a campus assistant with access to official college documents. You MUST prioritize and use the official campus information provided below.
 
-OFFICIAL CAMPUS INFORMATION (USE THIS FIRST):
-{kb_result['context']}
+        if kb_result['has_context']:
+            # Use the best match directly
+            best_answer = kb_result.get('best_answer', '')
+            best_question = kb_result.get('best_question', '')
+
+            # Create a focused prompt that prioritizes the exact match
+            enhanced_prompt = f"""
+You are a campus assistant with access to official college documents.
+
+OFFICIAL CAMPUS INFORMATION (USE THIS EXACTLY):
+The user asked: "{message}"
+From our documents: {best_question}
+Official Answer: {best_answer}
 
 INSTRUCTIONS:
-1. ALWAYS use the official campus information above as your PRIMARY source
-2. Base your answer directly on the campus information provided
-3. If the campus information fully answers the question, use it and add "According to our campus documents..." 
+1. Use the official answer above as your PRIMARY and MAIN response
+2. Start with "According to our campus documents,"
+3. Give the specific information from the official answer
 4. If the question is in Hindi, respond in Hindi
 5. If the question is in English, respond in English
-6. Keep responses specific and actionable
-7. Do NOT provide generic answers when campus information is available
+6. Keep the response direct and factual
+7. DO NOT add extra information not in the official answer
 
-Student Question: {message}
+User Question: {message}
 
-Provide a response based primarily on the official campus information above:
+Provide the official answer from the campus documents:
 """
+
+            print(f"🤖 Using direct match: {best_question}")
+
         else:
             # Fallback prompt when no specific context is found
             enhanced_prompt = f"""
@@ -141,13 +146,13 @@ Provide a response based primarily on the official campus information above:
 
 Student Question: {message}
 
-Note: No specific campus information was found for this query. Provide general helpful guidance for Indian college students, but mention that for specific campus details, they should check with their college office.
+No specific campus information was found for this query. Provide general helpful guidance for Indian college students, but mention that for specific campus details, they should check with their college office.
 
 Please provide a helpful response:
 """
-        
+    
         try:
-            print(f"🤖 Sending to Gemini with {'campus context' if kb_result['has_context'] else 'general context'}...")
+            print(f"🤖 Sending to Gemini...")
             
             response = self.client.models.generate_content(
                 model="gemini-2.5-flash",
@@ -156,19 +161,21 @@ Please provide a helpful response:
             
             if response and response.text:
                 clean_response = response.text.strip()
-                print(f"✅ Generated response with {'document context' if kb_result['has_context'] else 'general guidance'}")
+                print(f"✅ Generated response: {clean_response[:100]}...")
                 return ChatResponse(response=clean_response)
             else:
                 print("❌ No response from Gemini")
                 # If AI fails but we have campus context, return it directly
                 if kb_result['has_context']:
-                    return ChatResponse(response=f"According to our campus documents:\n\n{kb_result['context']}")
+                    direct_response = f"According to our campus documents, {kb_result.get('best_answer', '')}"
+                    return ChatResponse(response=direct_response)
                 return None
                 
         except Exception as e:
             print(f"❌ Gemini API Error: {e}")
             # Fallback to document-only response if AI fails
             if kb_result['has_context']:
-                fallback_response = f"Based on our campus information:\n\n{kb_result['context']}\n\nFor more details, please contact the relevant campus office."
+                fallback_response = f"According to our campus documents: {kb_result.get('best_answer', '')}"
                 return ChatResponse(response=fallback_response)
             return None
+    

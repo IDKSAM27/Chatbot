@@ -174,108 +174,264 @@ class CampusDocumentProcessor:
             return 'en'
 
     def parse_campus_faqs(self, text: str) -> List[Dict[str, str]]:
-        """Enhanced FAQ extraction with fee-specific patterns"""
+        """Dynamic FAQ extraction that adapts to any document structure"""
 
         faqs = []
         text_lower = text.lower()
 
         print(f"📝 Parsing {len(text)} characters of text...")
-        print(f"🔍 Sample text: {text[:200]}...")
+        print(f"🔍 Sample text: {text[:300]}...")
 
-        # Clean the text first
-        text = re.sub(r'\n+', '\n', text)  # Remove extra newlines
-        text = re.sub(r'\s+', ' ', text)   # Normalize spaces
+        # Dynamic fee extraction (detects patterns, doesn't hardcode values)
+        if any(keyword in text_lower for keyword in ['fee', 'tuition', 'cost', 'payment', 'price']):
+            print("💰 Detected fee-related content, using dynamic extraction...")
 
-        # Fee-specific extraction patterns (NEW)
-        if 'fee' in text_lower or 'payment' in text_lower or 'cost' in text_lower or 'tuition' in text_lower:
-            print("💰 Detected fee-related content, using specialized extraction...")
+            # Extract fee information dynamically
+            fee_faqs = self._extract_fee_information_dynamically(text)
+            faqs.extend(fee_faqs)
 
-            fee_patterns = [
-                # Fee structure tables
-                r'(?i)(.*?(?:B\.?A\.?|B\.?COM|B\.?SC|M\.?A\.?|M\.?COM|M\.?SC|B\.?TECH|M\.?TECH).*?)\s*[-–]\s*(?:Rs\.?\s*)?(\d+(?:,\d+)*)',
-                # Fee amounts with course names
-                r'(?i)((?:Bachelor|Master|Diploma).*?).*?(?:Rs\.?\s*|INR\s*)?(\d+(?:,\d+)*)',
-                # General fee information
-                r'(?i)(.*?fees?\s+for.*?)[\s:]+(?:Rs\.?\s*)?(\d+(?:,\d+)*)',
-                r'(?i)(semester\s+fees?|annual\s+fees?|admission\s+fees?).*?(?:Rs\.?\s*)?(\d+(?:,\d+)*)',
-            ]
+        # Dynamic table extraction (for any structured data)
+        table_faqs = self._extract_table_data_dynamically(text)
+        faqs.extend(table_faqs)
 
-            for pattern in fee_patterns:
-                matches = re.findall(pattern, text, re.MULTILINE)
-                for match in matches:
-                    if len(match) == 2:
-                        course_info = match[0].strip()
-                        fee_amount = match[1].strip()
-
-                        if len(course_info) > 5 and fee_amount:
-                            question = f"What is the fee for {course_info}?"
-                            answer = f"The fee for {course_info} is Rs. {fee_amount}"
-
-                            faqs.append({
-                                'question': question,
-                                'answer': answer,
-                                'language': 'en',
-                                'category': 'fees'
-                            })
-                            print(f"    ✅ Fee extracted: {question}")
-
-        # Standard Q&A patterns (existing)
+        # Standard Q&A patterns
         qa_patterns = [
             r'(?i)Q\d*[:\.]?\s*(.*?)\s*A\d*[:\.]?\s*(.*?)(?=Q\d*[:\.]|\n\n|\Z)',
             r'(?i)(.*?\?)\s*:?\s*\n\s*(.*?)(?=\n.*?\?|\n\n|\Z)',
-            r'(?i)((?:How|What|When|Where|Why).*?\?)\s*\n\s*(.*?)(?=\n(?:How|What|When|Where|Why)|\n\n|\Z)'
         ]
 
         for pattern_idx, pattern in enumerate(qa_patterns):
             matches = re.findall(pattern, text, re.MULTILINE | re.DOTALL)
-            print(f"  Pattern {pattern_idx + 1}: Found {len(matches)} matches")
+            if matches:
+                print(f"  Q&A Pattern {pattern_idx + 1}: Found {len(matches)} matches")
 
-            for match in matches:
-                if len(match) == 2:
-                    question = match[0].strip()
-                    answer = match[1].strip()
+                for match in matches:
+                    if len(match) == 2:
+                        question = re.sub(r'\s+', ' ', match[0].strip())
+                        answer = re.sub(r'\s+', ' ', match[1].strip())
 
-                    # Clean up
-                    question = re.sub(r'[^\w\s\?\u0900-\u097F\u0600-\u06FF]', ' ', question)
-                    question = re.sub(r'\s+', ' ', question).strip()
-                    answer = re.sub(r'\s+', ' ', answer).strip()
+                        if len(question) > 5 and len(answer) > 20 and '?' in question:
+                            faqs.append({
+                                'question': question,
+                                'answer': answer,
+                                'language': self.detect_language(question),
+                                'category': self._categorize_faq(question)
+                            })
 
-                    if (len(question) > 5 and len(answer) > 20 and 
-                        not question.lower().startswith(('page', 'section', 'chapter')) and
-                        '?' in question):
-
-                        faqs.append({
-                            'question': question,
-                            'answer': answer,
-                            'language': self.detect_language(question),
-                            'category': self._categorize_faq(question)
-                        })
-                        print(f"    ✅ Q&A: {question[:50]}...")
-
-        # Content-based extraction (improved)
-        content_sections = self._extract_content_sections(text)
-        for section in content_sections:
-            faqs.append(section)
-            print(f"    ✅ Section: {section['question'][:50]}...")
+        # Content section extraction (flexible)
+        content_faqs = self._extract_content_sections_dynamically(text)
+        faqs.extend(content_faqs)
 
         print(f"📊 Total extracted FAQs: {len(faqs)}")
         return faqs
+
+    def _extract_fee_information_dynamically(self, text: str) -> List[Dict[str, str]]:
+        """Dynamically extract fee information from any format - with deduplication"""
+        fee_faqs = []
+
+        # Fee extraction patterns (same as before)
+        fee_patterns = [
+            r'(?i)(B\.?A\.?|B\.?COM?|B\.?SC\.?|M\.?A\.?|M\.?COM?|M\.?SC\.?|BCA|BBA|MBA|H\.?S\.?)(?:\s+.*?)?[:\s]*(?:Rs\.?\s*)?(\d+(?:,\d+)*(?:\.\d+)?)',
+            r'(?i)(.*?(?:tuition|admission|total|annual|semester).*?fee.*?)(?:for\s+)?(B\.?A\.?|B\.?COM?|B\.?SC\.?|M\.?A\.?|M\.?COM?|M\.?SC\.?|BCA|BBA|MBA|H\.?S\.?)[:\s]*(?:Rs\.?\s*)?(\d+(?:,\d+)*(?:\.\d+)?)',
+            r'(?i)(B\.?A\.?|B\.?COM?|B\.?SC\.?|M\.?A\.?|M\.?COM?|M\.?SC\.?|BCA|BBA|MBA|H\.?S\.?)(?:\s+[^\d\n]*?)?[:\s]+(?:Rs\.?\s*)?(\d+(?:,\d+)*(?:\.\d+)?)',
+            r'(?i)(tuition\s+fee|admission\s+fee|total\s+fee|annual\s+fee|semester\s+fee)[^\d]*(\d+(?:,\d+)*(?:\.\d+)?)'
+        ]
+
+        found_fees = {}  # To track and prioritize fees
+
+        for pattern_idx, pattern in enumerate(fee_patterns):
+            matches = re.findall(pattern, text, re.MULTILINE)
+            print(f"  Fee Pattern {pattern_idx + 1}: Found {len(matches)} matches")
+
+            for match in matches:
+                if len(match) >= 2:
+                    if len(match) == 2:
+                        course_or_type, amount = match[0].strip(), match[1].strip()
+                        fee_type = "tuition fee"
+                    elif len(match) == 3:
+                        fee_type, course_or_type, amount = match[0].strip(), match[1].strip(), match[2].strip()
+                    else:
+                        continue
+                    
+                    # Clean up course name
+                    course = re.sub(r'[^\w\s\.]', ' ', course_or_type).strip()
+                    course = re.sub(r'\s+', ' ', course)
+
+                    if len(course) < 2 or len(amount) < 2:
+                        continue
+                    
+                    # Normalize course name for deduplication
+                    course_normalized = course.lower().replace('.', '').replace(' ', '')
+
+                    # Create priority system: prefer specific fee types over general ones
+                    fee_key = f"{course_normalized}_fee"
+                    amount_num = float(amount.replace(',', ''))
+
+                    # Priority logic: prefer larger amounts (likely total fees) and more specific descriptions
+                    priority = 0
+                    if 'total' in fee_type.lower() or 'annual' in fee_type.lower():
+                        priority = 3  # Highest priority for total/annual fees
+                    elif 'tuition' in fee_type.lower():
+                        priority = 2  # Medium priority for tuition fees
+                    else:
+                        priority = 1  # Lowest priority for general fees
+
+                    # Only keep the highest priority fee for each course
+                    if fee_key not in found_fees or found_fees[fee_key]['priority'] < priority:
+                        found_fees[fee_key] = {
+                            'course': course,
+                            'amount': amount,
+                            'fee_type': fee_type,
+                            'priority': priority,
+                            'amount_num': amount_num
+                        }
+                        print(f"    ✅ Updated: {course} -> Rs. {amount} (priority: {priority})")
+                    else:
+                        print(f"    ⏭️ Skipped: {course} -> Rs. {amount} (lower priority)")
+
+        # Convert found_fees to FAQs
+        for fee_data in found_fees.values():
+            course = fee_data['course']
+            amount = fee_data['amount']
+            fee_type = fee_data['fee_type']
+
+            if any(c in course.lower() for c in ['b.a', 'ba', 'b.com', 'bcom', 'b.sc', 'bsc', 'bca', 'bba', 'mba', 'h.s']):
+                question = f"What is the fee for {course}?"
+                answer = f"The fee for {course} is Rs. {amount}."
+            else:
+                question = f"What is the {course.lower()}?"
+                answer = f"The {course.lower()} is Rs. {amount}."
+
+            fee_faqs.append({
+                'question': question,
+                'answer': answer,
+                'language': 'en',
+                'category': 'fees'
+            })
+
+        print(f"💰 Dynamically extracted {len(fee_faqs)} deduplicated fee FAQs")
+        return fee_faqs
+
+
+    def _extract_table_data_dynamically(self, text: str) -> List[Dict[str, str]]:
+        """Dynamically extract structured table data"""
+        table_faqs = []
+
+        # Look for table-like structures with numbers
+        lines = text.split('\n')
+
+        # Find lines that look like table rows (contain both text and numbers)
+        table_rows = []
+        for line in lines:
+            line = line.strip()
+            if (len(line) > 10 and 
+                re.search(r'\d+(?:\.\d+)?', line) and  # Contains numbers
+                not line.isupper() and  # Not a header
+                len(line.split()) >= 2):  # Has multiple parts
+
+                table_rows.append(line)
+
+        # Process table rows to extract meaningful information
+        for row in table_rows:
+            # Extract key-value pairs from table rows
+            parts = re.split(r'\s{2,}|\t', row)  # Split on multiple spaces or tabs
+
+            if len(parts) >= 2:
+                key_part = parts[0].strip()
+                value_parts = [p.strip() for p in parts[1:] if p.strip()]
+
+                if value_parts and key_part:
+                    # Find numeric values in the row
+                    amounts = re.findall(r'\d+(?:,\d+)*(?:\.\d+)?', ' '.join(value_parts))
+
+                    if amounts:
+                        # Create FAQ based on the structure
+                        if any(word in key_part.lower() for word in ['fee', 'cost', 'amount', 'price']):
+                            question = f"What is the {key_part.lower()}?"
+                            answer = f"The {key_part.lower()} is Rs. {amounts[0]}."
+
+                            table_faqs.append({
+                                'question': question,
+                                'answer': answer,
+                                'language': 'en',
+                                'category': self._categorize_faq(key_part)
+                            })
+                            print(f"    📊 Table: {key_part} -> Rs. {amounts[0]}")
+
+        print(f"📋 Dynamically extracted {len(table_faqs)} table FAQs")
+        return table_faqs
+
+    def _extract_content_sections_dynamically(self, text: str) -> List[Dict[str, str]]:
+        """Dynamically extract content sections based on structure"""
+        section_faqs = []
+
+        # Split text into logical sections
+        paragraphs = [p.strip() for p in text.split('\n\n') if len(p.strip()) > 30]
+
+        for paragraph in paragraphs:
+            # Skip very long paragraphs (likely full text dumps)
+            if len(paragraph) > 500:
+                continue
+            
+            # Extract key topics from the paragraph
+            key_terms = self._extract_key_terms(paragraph)
+
+            if key_terms:
+                # Create contextual question based on key terms
+                if len(key_terms) == 1:
+                    question = f"What information is available about {key_terms[0]}?"
+                else:
+                    question = f"What are the details for {', '.join(key_terms[:2])}?"
+
+                section_faqs.append({
+                    'question': question,
+                    'answer': paragraph[:400] + "..." if len(paragraph) > 400 else paragraph,
+                    'language': self.detect_language(paragraph),
+                    'category': self._categorize_faq(' '.join(key_terms))
+                })
+                print(f"    📄 Section: {question[:50]}...")
+
+        print(f"📑 Dynamically extracted {len(section_faqs)} content sections")
+        return section_faqs
+
+    def _extract_key_terms(self, text: str) -> List[str]:
+        """Extract key terms from text to generate questions"""
+
+        # Common important terms for educational documents
+        important_terms = {
+            'fees': ['fee', 'tuition', 'cost', 'payment', 'amount'],
+            'courses': ['b.a', 'b.com', 'b.sc', 'bca', 'bba', 'mba', 'course', 'program'],
+            'facilities': ['library', 'lab', 'hostel', 'mess', 'campus'],
+            'academic': ['exam', 'admission', 'semester', 'year', 'subject'],
+            'administration': ['registration', 'enrollment', 'identity', 'card']
+        }
+
+        text_lower = text.lower()
+        found_terms = []
+
+        for category, terms in important_terms.items():
+            for term in terms:
+                if term in text_lower and term not in found_terms:
+                    found_terms.append(term)
+
+        return found_terms[:3]  # Return top 3 terms
+
     
     def _extract_content_sections(self, text: str) -> List[Dict[str, str]]:
         """Extract structured content sections"""
         sections = []
-        
+
         # Split text into logical sections
         paragraphs = [p.strip() for p in text.split('\n') if len(p.strip()) > 30]
-        
+
         for paragraph in paragraphs:
             # Skip very short paragraphs
             if len(paragraph) < 50:
                 continue
-                
+
             # Create contextual questions based on content
             para_lower = paragraph.lower()
-            
+
             if any(word in para_lower for word in ['fee', 'cost', 'payment', 'tuition']):
                 if any(word in para_lower for word in ['ba', 'b.a', 'bachelor', 'bcom', 'b.com']):
                     question = "What are the fee details for undergraduate courses?"
@@ -283,28 +439,28 @@ class CampusDocumentProcessor:
                     question = "What are the fee details for postgraduate courses?"
                 else:
                     question = "What are the fee payment details?"
-                    
+
             elif any(word in para_lower for word in ['library', 'book', 'study']):
                 question = "What are the library facilities?"
-                
+
             elif any(word in para_lower for word in ['hostel', 'mess', 'accommodation']):
                 question = "What are the hostel facilities?"
-                
+
             elif any(word in para_lower for word in ['scholarship', 'financial aid', 'छात्रवृत्ति']):
                 question = "What scholarship information is available?"
-                
+
             else:
                 # Generic question based on key terms
                 words = paragraph.split()[:5]
                 question = f"What information is available about {' '.join(words)}?"
-            
+
             sections.append({
                 'question': question,
                 'answer': paragraph,
                 'language': self.detect_language(paragraph),
                 'category': self._categorize_faq(paragraph)
             })
-        
+
         return sections
 
 
@@ -413,60 +569,190 @@ class CampusDocumentProcessor:
         return chunks
 
     def search_documents(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Search for relevant documents using SQLite (keyword-based)"""
-        
+        """Enhanced search with better keyword matching and course name recognition"""
+
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
-            # Simple keyword-based search
-            search_terms = query.lower().split()
+
+            # Normalize query for better matching
+            query_lower = query.lower().strip()
+            print(f"🔍 Original query: '{query}' -> Normalized: '{query_lower}'")
+
+            # Extract course names from query
+            course_keywords = self._extract_course_from_query(query_lower)
+            fee_keywords = self._extract_fee_type_from_query(query_lower)
+
+            print(f"📚 Detected courses: {course_keywords}")
+            print(f"💰 Detected fee types: {fee_keywords}")
+
+            # Build search query with course-specific matching
             search_conditions = []
             search_params = []
-            
-            for term in search_terms:
-                search_conditions.append("(LOWER(question) LIKE ? OR LOWER(answer) LIKE ?)")
-                search_params.extend([f"%{term}%", f"%{term}%"])
-            
+
+            if course_keywords:
+                # Prioritize exact course matches
+                for course in course_keywords:
+                    # Direct question match
+                    search_conditions.append("(LOWER(question) LIKE ? OR LOWER(answer) LIKE ?)")
+                    search_params.extend([f"%{course}%", f"%{course}%"])
+
+            if fee_keywords:
+                # Add fee type matching
+                for fee_type in fee_keywords:
+                    search_conditions.append("(LOWER(question) LIKE ? OR LOWER(answer) LIKE ?)")
+                    search_params.extend([f"%{fee_type}%", f"%{fee_type}%"])
+
+            # Fallback: general keyword search
+            if not search_conditions:
+                query_words = query_lower.split()
+                for word in query_words:
+                    if len(word) > 2:  # Skip very short words
+                        search_conditions.append("(LOWER(question) LIKE ? OR LOWER(answer) LIKE ?)")
+                        search_params.extend([f"%{word}%", f"%{word}%"])
+
+            if not search_conditions:
+                return []
+
+            # Execute search with priority scoring
             search_query = f"""
                 SELECT question, answer, category, language, source_file
                 FROM campus_faqs 
                 WHERE {' OR '.join(search_conditions)}
                 ORDER BY 
-                    CASE WHEN LOWER(question) LIKE ? THEN 1 ELSE 2 END,
+                    CASE 
+                        WHEN LOWER(question) LIKE ? THEN 1
+                        WHEN LOWER(answer) LIKE ? THEN 2
+                        ELSE 3 
+                    END,
                     LENGTH(answer)
                 LIMIT ?
             """
-            
-            # Add priority search term and limit
-            search_params.append(f"%{query.lower()}%")
-            search_params.append(limit)
-            
+
+            # Add priority search terms (first course/fee keyword) and limit
+            if course_keywords:
+                priority_term = course_keywords[0]
+            elif fee_keywords:
+                priority_term = fee_keywords[0]
+            else:
+                priority_term = query_lower.split()[0] if query_lower.split() else query_lower
+
+            search_params.extend([f"%{priority_term}%", f"%{priority_term}%", limit])
+
             cursor.execute(search_query, search_params)
             results = cursor.fetchall()
-            
+
             search_results = []
             for row in results:
+                question, answer, category, language, source_file = row
+
+                # Calculate relevance score based on exact matches
+                relevance_score = self._calculate_enhanced_relevance(query_lower, question, answer, course_keywords, fee_keywords)
+
                 result = {
-                    'content': row[1],  # answer
+                    'content': answer,
                     'metadata': {
-                        'question': row[0],
-                        'category': row[2],
-                        'language': row[3],
-                        'source_file': row[4],
+                        'question': question,
+                        'category': category,
+                        'language': language,
+                        'source_file': source_file,
                         'doc_type': 'faq'
                     },
-                    'similarity_score': self._calculate_relevance_score(query, row[0], row[1]),
-                    'confidence': 'high'
+                    'similarity_score': relevance_score,
+                    'confidence': 'high' if relevance_score > 0.7 else 'medium' if relevance_score > 0.4 else 'low'
                 }
                 search_results.append(result)
-            
+
+                print(f"  Found: {question} (score: {relevance_score:.2f})")
+
+            # Sort by relevance score (highest first)
+            search_results.sort(key=lambda x: x['similarity_score'], reverse=True)
+
             conn.close()
+            print(f"✅ Returning {len(search_results)} results")
             return search_results
-            
+
         except Exception as e:
             print(f"❌ Search error: {e}")
             return []
+        
+    def _extract_course_from_query(self, query: str) -> List[str]:
+        """Extract course names from user query"""
+        courses = []
+
+        # Course mapping for various formats
+        course_patterns = {
+            'b.a': ['b.a', 'ba', 'bachelor of arts', 'arts'],
+            'b.sc': ['b.sc', 'bsc', 'bachelor of science', 'science'],
+            'b.com': ['b.com', 'bcom', 'bachelor of commerce', 'commerce'],
+            'bca': ['bca', 'bachelor of computer application'],
+            'bba': ['bba', 'bachelor of business administration'],
+            'mba': ['mba', 'master of business administration'],
+            'h.s': ['h.s', 'hs', 'higher secondary'],
+        }
+
+        for standard_name, variations in course_patterns.items():
+            for variation in variations:
+                if variation in query:
+                    courses.append(standard_name)
+                    break  # Only add once per course
+                
+        return courses
+    
+    def _extract_fee_type_from_query(self, query: str) -> List[str]:
+        """Extract fee type from user query"""
+        fee_types = []
+
+        fee_patterns = {
+            'tuition': ['tuition', 'tuition fee'],
+            'admission': ['admission', 'admission fee'],
+            'total': ['total', 'total fee', 'overall'],
+            'fees': ['fee', 'fees', 'cost', 'amount']
+        }
+
+        for fee_type, variations in fee_patterns.items():
+            for variation in variations:
+                if variation in query:
+                    fee_types.append(fee_type)
+                    break
+                
+        return fee_types
+
+    def _calculate_enhanced_relevance(self, query: str, question: str, answer: str, course_keywords: List[str], fee_keywords: List[str]) -> float:
+        """Calculate relevance score with course and fee type weighting"""
+        
+        question_lower = question.lower()
+        answer_lower = answer.lower()
+        
+        score = 0.0
+        
+        # Course matching (high weight)
+        for course in course_keywords:
+            if course in question_lower:
+                score += 0.5  # High score for course in question
+            elif course in answer_lower:
+                score += 0.3  # Medium score for course in answer
+        
+        # Fee type matching (medium weight)
+        for fee_type in fee_keywords:
+            if fee_type in question_lower:
+                score += 0.3
+            elif fee_type in answer_lower:
+                score += 0.2
+        
+        # General keyword matching (low weight)
+        query_words = set(query.split())
+        question_words = set(question_lower.split())
+        answer_words = set(answer_lower.split())
+        
+        question_overlap = len(query_words.intersection(question_words)) / len(query_words) if query_words else 0
+        answer_overlap = len(query_words.intersection(answer_words)) / len(query_words) if query_words else 0
+        
+        score += question_overlap * 0.2
+        score += answer_overlap * 0.1
+        
+        # Cap score at 1.0
+        return min(score, 1.0)
 
     def _calculate_relevance_score(self, query: str, question: str, answer: str) -> float:
         """Calculate relevance score based on keyword matching"""

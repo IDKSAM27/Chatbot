@@ -144,3 +144,25 @@ def search_documents():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/debug/search/<query>')
+@login_required
+def debug_search(query):
+    """Debug endpoint to see search results"""
+    results = doc_processor.search_documents(query, limit=5)
+    
+    debug_info = {
+        'query': query,
+        'total_results': len(results),
+        'results': []
+    }
+    
+    for result in results:
+        debug_info['results'].append({
+            'question': result['metadata']['question'],
+            'answer': result['content'][:100] + "...",
+            'score': result['similarity_score'],
+            'category': result['metadata']['category']
+        })
+    
+    return jsonify(debug_info)
