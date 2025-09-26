@@ -5,3 +5,4 @@ from .authentication import register as register
 from .authentication import register_post as register_post
 from .home import index as index
 from .meta import robots_txt as robots_txt
+from . import documents

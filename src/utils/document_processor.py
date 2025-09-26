@@ -174,99 +174,139 @@ class CampusDocumentProcessor:
             return 'en'
 
     def parse_campus_faqs(self, text: str) -> List[Dict[str, str]]:
-        """Extract FAQ-style information from text with improved patterns"""
-        
+        """Enhanced FAQ extraction with fee-specific patterns"""
+
         faqs = []
-        
-        # Pattern 1: Explicit Q&A format
+        text_lower = text.lower()
+
+        print(f"📝 Parsing {len(text)} characters of text...")
+        print(f"🔍 Sample text: {text[:200]}...")
+
+        # Clean the text first
+        text = re.sub(r'\n+', '\n', text)  # Remove extra newlines
+        text = re.sub(r'\s+', ' ', text)   # Normalize spaces
+
+        # Fee-specific extraction patterns (NEW)
+        if 'fee' in text_lower or 'payment' in text_lower or 'cost' in text_lower or 'tuition' in text_lower:
+            print("💰 Detected fee-related content, using specialized extraction...")
+
+            fee_patterns = [
+                # Fee structure tables
+                r'(?i)(.*?(?:B\.?A\.?|B\.?COM|B\.?SC|M\.?A\.?|M\.?COM|M\.?SC|B\.?TECH|M\.?TECH).*?)\s*[-–]\s*(?:Rs\.?\s*)?(\d+(?:,\d+)*)',
+                # Fee amounts with course names
+                r'(?i)((?:Bachelor|Master|Diploma).*?).*?(?:Rs\.?\s*|INR\s*)?(\d+(?:,\d+)*)',
+                # General fee information
+                r'(?i)(.*?fees?\s+for.*?)[\s:]+(?:Rs\.?\s*)?(\d+(?:,\d+)*)',
+                r'(?i)(semester\s+fees?|annual\s+fees?|admission\s+fees?).*?(?:Rs\.?\s*)?(\d+(?:,\d+)*)',
+            ]
+
+            for pattern in fee_patterns:
+                matches = re.findall(pattern, text, re.MULTILINE)
+                for match in matches:
+                    if len(match) == 2:
+                        course_info = match[0].strip()
+                        fee_amount = match[1].strip()
+
+                        if len(course_info) > 5 and fee_amount:
+                            question = f"What is the fee for {course_info}?"
+                            answer = f"The fee for {course_info} is Rs. {fee_amount}"
+
+                            faqs.append({
+                                'question': question,
+                                'answer': answer,
+                                'language': 'en',
+                                'category': 'fees'
+                            })
+                            print(f"    ✅ Fee extracted: {question}")
+
+        # Standard Q&A patterns (existing)
         qa_patterns = [
-            r'(?i)(?:Q\.?\s*\d*[:\.]?\s*)(.*?)\n(?:A\.?\s*\d*[:\.]?\s*)(.*?)(?=\n(?:Q\.?|\n\n|\Z))',
-            r'(?i)(?:Question\s*\d*[:\.]?\s*)(.*?)\n(?:Answer\s*\d*[:\.]?\s*)(.*?)(?=\n(?:Question|\n\n|\Z))',
+            r'(?i)Q\d*[:\.]?\s*(.*?)\s*A\d*[:\.]?\s*(.*?)(?=Q\d*[:\.]|\n\n|\Z)',
+            r'(?i)(.*?\?)\s*:?\s*\n\s*(.*?)(?=\n.*?\?|\n\n|\Z)',
+            r'(?i)((?:How|What|When|Where|Why).*?\?)\s*\n\s*(.*?)(?=\n(?:How|What|When|Where|Why)|\n\n|\Z)'
         ]
-        
-        for pattern in qa_patterns:
+
+        for pattern_idx, pattern in enumerate(qa_patterns):
             matches = re.findall(pattern, text, re.MULTILINE | re.DOTALL)
+            print(f"  Pattern {pattern_idx + 1}: Found {len(matches)} matches")
+
             for match in matches:
                 if len(match) == 2:
-                    question = re.sub(r'\s+', ' ', match[0].strip())
-                    answer = re.sub(r'\s+', ' ', match[1].strip())
-                    
-                    if len(question) > 10 and len(answer) > 10:
+                    question = match[0].strip()
+                    answer = match[1].strip()
+
+                    # Clean up
+                    question = re.sub(r'[^\w\s\?\u0900-\u097F\u0600-\u06FF]', ' ', question)
+                    question = re.sub(r'\s+', ' ', question).strip()
+                    answer = re.sub(r'\s+', ' ', answer).strip()
+
+                    if (len(question) > 5 and len(answer) > 20 and 
+                        not question.lower().startswith(('page', 'section', 'chapter')) and
+                        '?' in question):
+
                         faqs.append({
                             'question': question,
                             'answer': answer,
                             'language': self.detect_language(question),
                             'category': self._categorize_faq(question)
                         })
+                        print(f"    ✅ Q&A: {question[:50]}...")
+
+        # Content-based extraction (improved)
+        content_sections = self._extract_content_sections(text)
+        for section in content_sections:
+            faqs.append(section)
+            print(f"    ✅ Section: {section['question'][:50]}...")
+
+        print(f"📊 Total extracted FAQs: {len(faqs)}")
+        return faqs
+    
+    def _extract_content_sections(self, text: str) -> List[Dict[str, str]]:
+        """Extract structured content sections"""
+        sections = []
         
-        # Pattern 2: Hindi question format
-        hindi_qa_pattern = r'(.*?\?)\s*\n\s*(.*?)(?=\n.*?\?|\n\n|\Z)'
-        hindi_matches = re.findall(hindi_qa_pattern, text, re.MULTILINE | re.DOTALL)
-        for match in hindi_matches:
-            if len(match) == 2:
-                question = re.sub(r'\s+', ' ', match[0].strip())
-                answer = re.sub(r'\s+', ' ', match[1].strip())
+        # Split text into logical sections
+        paragraphs = [p.strip() for p in text.split('\n') if len(p.strip()) > 30]
+        
+        for paragraph in paragraphs:
+            # Skip very short paragraphs
+            if len(paragraph) < 50:
+                continue
                 
-                if len(question) > 10 and len(answer) > 15:
-                    lang = self.detect_language(question)
-                    faqs.append({
-                        'question': question,
-                        'answer': answer,
-                        'language': lang,
-                        'category': self._categorize_faq(question)
-                    })
-        
-        # Pattern 3: Extract structured information
-        info_sections = {
-            'fees': [
-                r'(?i)(fee.*?structure|payment.*?procedure|tuition.*?cost)',
-                r'(?i)(semester.*?fee|annual.*?fee|admission.*?fee)'
-            ],
-            'library': [
-                r'(?i)(library.*?timing|library.*?hour|book.*?issue)',
-                r'(?i)(study.*?hall|reading.*?room|digital.*?resource)'
-            ],
-            'hostel': [
-                r'(?i)(hostel.*?facility|mess.*?timing|accommodation)',
-                r'(?i)(room.*?allocation|boarding|residential)'
-            ],
-            'scholarship': [
-                r'(?i)(scholarship|financial.*?aid|grant.*?program)',
-                r'(?i)(छात्रवृत्ति|वित्तीय.*?सहायता)'
-            ]
-        }
-        
-        for category, patterns in info_sections.items():
-            for pattern in patterns:
-                matches = re.finditer(pattern, text, re.IGNORECASE)
-                for match in matches:
-                    # Extract surrounding context
-                    start = max(0, match.start() - 50)
-                    end = min(len(text), match.end() + 200)
-                    context = text[start:end].strip()
+            # Create contextual questions based on content
+            para_lower = paragraph.lower()
+            
+            if any(word in para_lower for word in ['fee', 'cost', 'payment', 'tuition']):
+                if any(word in para_lower for word in ['ba', 'b.a', 'bachelor', 'bcom', 'b.com']):
+                    question = "What are the fee details for undergraduate courses?"
+                elif any(word in para_lower for word in ['ma', 'm.a', 'master', 'mcom', 'm.com']):
+                    question = "What are the fee details for postgraduate courses?"
+                else:
+                    question = "What are the fee payment details?"
                     
-                    if len(context) > 50:
-                        question = f"What about {match.group(0).lower()}?"
-                        faqs.append({
-                            'question': question,
-                            'answer': context,
-                            'language': self.detect_language(context),
-                            'category': category
-                        })
+            elif any(word in para_lower for word in ['library', 'book', 'study']):
+                question = "What are the library facilities?"
+                
+            elif any(word in para_lower for word in ['hostel', 'mess', 'accommodation']):
+                question = "What are the hostel facilities?"
+                
+            elif any(word in para_lower for word in ['scholarship', 'financial aid', 'छात्रवृत्ति']):
+                question = "What scholarship information is available?"
+                
+            else:
+                # Generic question based on key terms
+                words = paragraph.split()[:5]
+                question = f"What information is available about {' '.join(words)}?"
+            
+            sections.append({
+                'question': question,
+                'answer': paragraph,
+                'language': self.detect_language(paragraph),
+                'category': self._categorize_faq(paragraph)
+            })
         
-        # Remove duplicates based on similarity
-        unique_faqs = []
-        for faq in faqs:
-            is_duplicate = False
-            for existing in unique_faqs:
-                if (self._text_similarity(faq['question'], existing['question']) > 0.8 or
-                    self._text_similarity(faq['answer'], existing['answer']) > 0.9):
-                    is_duplicate = True
-                    break
-            if not is_duplicate:
-                unique_faqs.append(faq)
-        
-        return unique_faqs
+        return sections
+
 
     def _text_similarity(self, text1: str, text2: str) -> float:
         """Simple text similarity based on common words"""
